@@ -703,19 +703,24 @@ void viewshed() {
 		//get the transforminfo
 		double  adfGeoTransform[6];
 		if (GDALGetGeoTransform(hDataset, adfGeoTransform) == CE_None) {
-				
+			fprintf(stderr,"Data should by in some CRS");
 			//TODO: should we take come action here...?
 		
 			//    if (!program_options.quiet) printf( "Origin = (%.6f,%.6f)\n",
 			//  adfGeoTransform[0], adfGeoTransform[3] );
 			//    if (!program_options.quiet)  printf( "Pixel Size = (%.6f,%.6f)\n",
 			//  adfGeoTransform[1], adfGeoTransform[5] );
-		}
+		} 
 
 		//get the origin
 		float topLeftXinputData = adfGeoTransform[0];
 		float topLeftYinputData = adfGeoTransform[3];
-
+		
+		//get CRS
+		if( GDALGetProjectionRef( hDataset ) != NULL )
+    			printf( "Projection is `%s'\n", GDALGetProjectionRef( hDataset ) );
+		// if input data is in geographic CRS then radius should be changed to degrees
+		
 		//get input values in metres
 		output.minx = program_options.centerX - program_options.radius;
 		output.maxx = program_options.centerX + program_options.radius;
@@ -759,28 +764,35 @@ void viewshed() {
 		GDALDatasetH hDstDS;
 		char **papszOptions = NULL;
 		if (program_options.outputFileName == (void *)0) {
-			hDstDS = GDALCreate(hDriver, "output.tif", output.pixelWidth, output.pixelHeight, 1, GDT_Byte,
-				papszOptions);
+			//hDstDS = GDALCreate(hDriver, "output.tif", output.pixelWidth, output.pixelHeight, 1, GDT_Byte,
+			//	papszOptions);
+			
+			hDstDS = GDALCreateCopy( hDriver, "output.tif", hDataset, FALSE,
+                         NULL, NULL, NULL );
 			printf("NO output file name specified. Defaulting to 'output.tif'");
 		}
 		else {
-			hDstDS = GDALCreate(hDriver, program_options.outputFileName, output.pixelWidth, output.pixelHeight, 1, GDT_Byte,
-				papszOptions);
+			//hDstDS = GDALCreate(hDriver, program_options.outputFileName, output.pixelWidth, output.pixelHeight, 1, GDT_Byte,
+			//	papszOptions);
+			
+			hDstDS = GDALCreateCopy( hDriver, program_options.outputFileName, hDataset, FALSE,
+                         NULL, NULL, NULL );
 		}
 
 		//set the transform params for the output file
-		double adfGeoTransformO[6] = { output.minx, program_options.resolution, 0,  output.maxy, 0, -program_options.resolution };
-		GDALSetGeoTransform(hDstDS, adfGeoTransformO);
+		// not needed anymore as we createcopy
+		//double adfGeoTransformO[6] = { output.minx, program_options.resolution, 0,  output.maxy, 0, -program_options.resolution };
+		//GDALSetGeoTransform(hDstDS, adfGeoTransformO);
 
 		//set projection
-		OGRSpatialReferenceH hSRS;
-		char *pszSRS_WKT = NULL;
-		hSRS = OSRNewSpatialReference(NULL);
-		OSRImportFromProj4(hSRS, program_options.projection);
-		OSRExportToWkt(hSRS, &pszSRS_WKT);
-		OSRDestroySpatialReference(hSRS);
-		GDALSetProjection(hDstDS, pszSRS_WKT);
-		CPLFree(pszSRS_WKT);
+		//OGRSpatialReferenceH hSRS;
+		//char *pszSRS_WKT = NULL;
+		//hSRS = OSRNewSpatialReference(NULL);
+		//OSRImportFromProj4(hSRS, program_options.projection);
+		//OSRExportToWkt(hSRS, &pszSRS_WKT);
+		//OSRDestroySpatialReference(hSRS);
+		//GDALSetProjection(hDstDS, pszSRS_WKT);
+		//CPLFree(pszSRS_WKT);
 
 		//load a blank array into the output object
 		output.data = (GByte *)CPLMalloc(sizeof(GByte)*(output.pixelWidth)*(output.pixelHeight));
